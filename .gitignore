@@ -16,10 +16,20 @@ env/
 .DS_Store
 Thumbs.db
 
-# Generated geospatial outputs
-Provinces.json
-map_osm.html
-provinces/*.json
-
 # Logs
 *.log
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environment secrets
+.env
+
+# Docker local data
+postgres_data/
+
+__pycache__/
+*.py[cod]

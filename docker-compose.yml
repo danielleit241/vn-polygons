@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16
+    container_name: vn_polygons_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vn_polygons
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./sql/seed-data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vn_polygons_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

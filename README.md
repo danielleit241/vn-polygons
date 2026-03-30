@@ -1,115 +1,293 @@
-# Vietnam Provinces GeoJSON with OSM Map
+﻿# VN Polygons API
 
-This project converts a Vietnam provinces shapefile into GeoJSON, splits each province/city into a standalone JSON file, and renders an interactive OpenStreetMap (OSM) preview.
+## 📖 Project Introduction
 
-## Project Structure
+**VN Polygons API** is a backend service providing administrative data for Vietnam and geographical polygons for provinces and cities. The project adopts an API-first approach, focusing on CRUD operations for administrative entities and importing GeoJSON data into a PostgreSQL database.
 
-- `main.py`: Reads `Provinces.shp`, normalizes geometry, and exports `Provinces.json`.
-- `split_provinces.py`: Splits `Provinces.json` into one file per province in `provinces/`.
-- `draw_map.py`: Loads one province JSON file, renders `map_osm.html`, and serves it on `http://127.0.0.1:8000`.
-- `Provinces.shp`, `Provinces.shx`: Input shapefile data.
+### Project Scope
 
-## Requirements
+The current system provides the following capabilities:
 
-- Python 3.11+ (tested with Python 3.13)
-- Windows PowerShell or macOS Terminal (zsh/bash)
-- Python packages:
-  - geopandas
-  - shapely
-  - pyogrio
-  - folium
+- Manage Administrative Regions, Administrative Units, Provinces, and Wards.
+- Store province polygons within the boundary_geojson field.
+- Import polygons from existing GeoJSON file sets.
+- Provide REST APIs with Swagger/OpenAPI documentation.
 
-## Setup (Windows)
+---
 
-If you already have `.venv`, you can skip environment creation.
+## ✨ Core Features
 
-```powershell
+### 1) Administrative Data APIs
+
+- CRUD operations for administrative regions, administrative units, provinces, and wards.
+- Support for pagination and filtering wards by province_code.
+
+### 2) Province Polygon Import
+
+- Import from the directory specified by PROVINCE_POLYGONS_DIR.
+- Mechanism to map files by code_name with a fallback to slug.
+- Optional overwrite feature to overwrite existing polygons.
+
+### 3) Data Validation and Consistency
+
+- Request/response validation using Pydantic schemas.
+- Validate foreign keys to administrative_units and provinces before writing data.
+- Return explicit HTTP error messages for 400/404 scenarios.
+
+### 4) Testing and Quality Gate
+
+- Unit tests for the service layer.
+- Enforced minimum of 80% test coverage for app/services.
+
+---
+
+## 🛠️ Technology Stack
+
+**Backend:**
+
+- FastAPI
+- Uvicorn
+- Python 3.12+
+
+**Data Layer:**
+
+- PostgreSQL 16
+- SQLAlchemy 2.x
+- psycopg 3
+
+**Validation and Configuration:**
+
+- Pydantic / pydantic-settings
+- python-dotenv
+
+**Testing:**
+
+- pytest
+- pytest-cov
+
+---
+
+## 📁 Source Code Overview
+
+`	ext
+vn-polygons/
+|-- app/
+|   |-- main.py                         # FastAPI app entrypoint
+|   |-- api/v1/
+|   |   |-- router.py                   # Main API router
+|   |   -- endpoints/                  # Resource endpoints
+|   |-- core/config.py                  # Environment settings (.env)
+|   |-- db/session.py                   # Engine & SessionLocal setup
+|   |-- models/                         # SQLAlchemy models
+|   |-- schemas/                        # Pydantic validation schemas
+|   -- services/                       # Business logic layer
+|-- sql/
+|   |-- schema.sql                      # Create tables/indexes/constraints
+|   |-- seed-data.sql                   # Initial seed data
+|   -- provinces/*.json                # GeoJSON polygon sets
+|-- tests/
+|   |-- conftest.py
+|   -- test_services.py
+|-- docker-compose.yml
+|-- Dockerfile
+|-- requirements.txt
+|-- pytest.ini
+-- .env.example
+`
+
+---
+
+## 🏗️ Architecture and Request Flow
+
+**Request Flow**  
+Client -> FastAPI Router -> Service/ORM -> PostgreSQL -> Response
+
+**Layer Responsibilities**
+
+- **Router Layer (app/api/v1/endpoints)**: Receives requests, validates query/path/body, and formats HTTP status codes and responses.
+- **Service Layer (app/services)**: Encapsulates business logic (especially polygon imports) and handles candidate mapping and import results.
+- **Data Layer (app/models, app/db)**: ORM model mapping, session management, and transaction commits/rollbacks.
+
+---
+
+## 📊 Data Model Summary
+
+- **administrative_regions**: id (PK), name, name_en, code_name, code_name_en
+- **administrative_units**: id (PK), full_name, full_name_en, short_name, short_name_en, code_name, code_name_en
+- **provinces**: code (PK), name, name_en, full_name, full_name_en, code_name, boundary_geojson (JSON/JSONB), administrative_unit_id (FK)
+- **wards**: code (PK), name, name_en, full_name, full_name_en, code_name, province_code (FK), administrative_unit_id (FK)
+
+---
+
+## ⚙️ Environment Configuration
+
+Create a .env file from the template:
+`powershell
+copy .env.example .env
+`
+
+**Default Content:**
+`env
+APP_NAME=VN Polygons API
+API_V1_PREFIX=/api/v1
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/vn_polygons
+PROVINCE_POLYGONS_DIR=sql/provinces
+`
+
+---
+
+## 🚀 Run Options
+
+### Option 1: Run with Docker Compose
+
+**Start services:**
+`powershell
+copy .env.example .env
+docker compose up --build -d
+`
+_Defaults:_ API: http://localhost:8000 | PostgreSQL: localhost:5432  
+_(Database init scripts schema.sql & seed-data.sql are mounted and run on the first volume creation)._
+
+**Useful commands:**
+`powershell
+docker compose ps
+docker compose logs -f api
+docker compose logs -f db
+docker compose down
+docker compose down -v   # Stops containers and removes volumes
+`
+
+### Option 2: Run locally
+
+**Setup virtual environment and dependencies:**
+`powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install geopandas shapely pyogrio folium
-```
+pip install --upgrade pip
+pip install -r requirements.txt
+copy .env.example .env
+`
 
-## Setup (macOS)
+**Start the application:**
+`powershell
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+`
 
-If you already have `.venv`, you can skip environment creation.
+---
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install geopandas shapely pyogrio folium
-```
+## 📚 API Documentation
 
-## Run Full Pipeline (Windows)
+Once the server is running, access the documentation at:
 
-From the project root:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-```powershell
-python main.py
-python split_provinces.py
-python draw_map.py can_tho
-```
+---
 
-If you do not activate your virtual environment, use:
+## 🔌 Endpoint Matrix
 
-```powershell
-.\.venv\Scripts\python.exe main.py
-.\.venv\Scripts\python.exe split_provinces.py
-.\.venv\Scripts\python.exe draw_map.py can_tho
-```
+### System
 
-## Run Full Pipeline (macOS)
+| Method | Endpoint       | Description  |
+| ------ | -------------- | ------------ |
+| GET    | /              | Root message |
+| GET    | /api/v1/health | Health check |
 
-From the project root:
+### Administrative Units & Regions
 
-```bash
-python3 main.py
-python3 split_provinces.py
-python3 draw_map.py can_tho
-```
+| Group       | Base Endpoint                  | Features                                |
+| ----------- | ------------------------------ | --------------------------------------- |
+| **Regions** | /api/v1/administrative-regions | List, Get By ID, Create, Update, Delete |
+| **Units**   | /api/v1/administrative-units   | List, Get By ID, Create, Update, Delete |
 
-If virtual environment is not activated, use:
+### Provinces & Wards
 
-```bash
-./.venv/bin/python main.py
-./.venv/bin/python split_provinces.py
-./.venv/bin/python draw_map.py can_tho
-```
+| Group         | Base Endpoint     | Features                                                                 |
+| ------------- | ----------------- | ------------------------------------------------------------------------ |
+| **Provinces** | /api/v1/provinces | List, Get By Code, Create, Update, Delete <br> **POST** /polygons/import |
+| **Wards**     | /api/v1/wards     | List, Get By Code, Create, Update, Delete                                |
 
-What you get:
+---
 
-- `Provinces.json` generated from shapefile
-- `provinces/*.json` generated (one per province/city)
-- `map_osm.html` generated and served locally
+## 📝 Request Examples
 
-Open map in browser:
+### Create a Province
 
-- `http://127.0.0.1:8000/map_osm.html`
+`ash
+curl -X POST "http://localhost:8000/api/v1/provinces" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"code\": \"01\",
+    \"name\": \"Ha Noi\",
+    \"name_en\": \"Hanoi\",
+    \"full_name\": \"Thanh pho Ha Noi\",
+    \"full_name_en\": \"Hanoi City\",
+    \"code_name\": \"ha_noi\",
+    \"administrative_unit_id\": 1
+  }"
+`
 
-## Draw Another Province
+### Import Polygons
 
-You can pass either a province name or a slug file name:
+`ash
+curl -X POST "http://localhost:8000/api/v1/provinces/polygons/import?overwrite=false"
+`
+**Example Response:**
+`json
+{
+  "updated": 34,
+  "missing_files": [],
+  "failed_files": []
+}
+`
 
-```bash
-python draw_map.py "Cần Thơ"
-python draw_map.py can_tho
-```
+**Polygon Import Rules**  
+The system looks for polygon files in the following order:
 
-On macOS, replace `python` with `python3` if needed.
+1. province.code_name
+2. Slug format of province.name
+3. Slug format of province.name_en
+4. _Special case:_ ho_chi_minh -> tp_ho_chi_minh.json
 
-If no argument is provided, `draw_map.py` shows all available provinces/cities and asks for input interactively.
+_Note: Only the geometry from the first feature in the GeoJSON file is extracted. If overwrite=false, existing records will be skipped._
 
-## Common Issues
+---
 
-1. SHX index issue (`Unable to open Provinces.shx`)
+## 🧪 Testing
 
-- `main.py` already sets `SHAPE_RESTORE_SHX=YES` automatically.
+**Run all tests:**
+`powershell
+pytest
+`
 
-2. CRS warning when exporting GeoJSON
+**Run service tests only:**
+`powershell
+pytest -q tests/test_services.py
+`
 
-- This warning does not break the pipeline.
-- If you need CRS metadata, assign CRS in `main.py` before export.
+_Test Coverage Policy (configured in pytest.ini)_: targets app/services with a minimum threshold of **80%**.
 
-## Notes
+---
 
-- Province display names are stored under the `province_name` property.
-- Generated outputs are ignored by Git via `.gitignore`.
+## 🔧 Troubleshooting
+
+- **DB connection failed**: Check DATABASE_URL in .env. If using Docker, ensure the db container is healthy and port 5432 is not conflicting.
+- **API cannot start**: Ensure the virtual environment is activated, dependencies are fully installed, or check logs using docker compose logs -f api.
+- **Init SQL did not apply**: Init scripts only run upon fresh volume creation. Run docker compose down -v and then bring it back up.
+- **Polygon import returns missing_files**: Check PROVINCE_POLYGONS_DIR. Verify the naming conventions in sql/provinces match code_name or slugs.
+
+---
+
+## 🛡️ Security and Operations Notes
+
+- Do **not** commit the .env file to version control.
+- Avoid exposing the database directly outside the production network.
+- Deploy behind a reverse proxy map with TLS for production domains.
+- Configure solid monitoring and backup strategies for PostgreSQL.
+
+---
+
+## 📄 License
+
+Currently, no LICENSE is declared. If this project is made public or distributed, an appropriate LICENSE file should be added.
