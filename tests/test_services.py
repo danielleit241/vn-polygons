@@ -14,6 +14,28 @@ from app.services import (
     provinces_service,
     wards_service,
 )
+from app.db.session import _normalize_database_url
+
+
+def test_normalize_database_url_converts_postgres_scheme():
+    database_url = "postgres://postgres:postgres@localhost:5432/vn_polygons"
+
+    normalized = _normalize_database_url(database_url)
+
+    assert normalized == "postgresql+psycopg://postgres:postgres@localhost:5432/vn_polygons"
+
+
+def test_normalize_database_url_strips_unsupported_query_options():
+    database_url = (
+        "postgresql://postgres:postgres@localhost:5432/vn_polygons"
+        "?sslmode=require&supa=project_ref"
+    )
+
+    normalized = _normalize_database_url(database_url)
+
+    assert normalized == (
+        "postgresql+psycopg://postgres:postgres@localhost:5432/vn_polygons?sslmode=require"
+    )
 
 
 def test_administrative_regions_service_crud(db_session):
