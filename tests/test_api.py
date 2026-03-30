@@ -123,17 +123,35 @@ def test_provinces_crud(client: TestClient) -> None:
         "full_name": "Thanh pho Ha Noi",
         "full_name_en": "Hanoi City",
         "code_name": "ha_noi",
+        "boundary_geojson": {
+            "type": "Polygon",
+            "coordinates": [[[105.8, 20.9], [105.9, 20.9], [105.9, 21.0], [105.8, 20.9]]],
+        },
         "administrative_unit_id": 2,
         "administrative_region_id": 2
     }
     response = client.post("/api/v1/provinces", json=province_data, headers=AUTH_HEADERS)
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["code"] == "01"
+    assert "boundary_geojson" not in response.json()
 
     # Get
     response = client.get("/api/v1/provinces/01")
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["name"] == "Ha Noi"
+    assert "boundary_geojson" not in response.json()
+
+    # List
+    response = client.get("/api/v1/provinces")
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.json()) == 1
+    assert "boundary_geojson" not in response.json()[0]
+
+    # Get boundary
+    response = client.get("/api/v1/provinces/01/boundary")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["code"] == "01"
+    assert response.json()["boundary_geojson"]["type"] == "Polygon"
 
     # Update
     response = client.put(
@@ -143,6 +161,7 @@ def test_provinces_crud(client: TestClient) -> None:
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["name"] == "Hanoi 2"
+    assert "boundary_geojson" not in response.json()
 
     # Delete
     response = client.delete("/api/v1/provinces/01", headers=AUTH_HEADERS)

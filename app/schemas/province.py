@@ -26,7 +26,23 @@ class ProvinceUpdate(BaseModel):
     administrative_unit_id: int | None = None
 
 
-class ProvinceRead(ProvinceBase):
+class ProvinceRead(BaseModel):
+    code: str
+    name: str
+    name_en: str | None = None
+    full_name: str
+    full_name_en: str | None = None
+    code_name: str | None = None
+    administrative_unit_id: int | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProvinceBoundaryRead(BaseModel):
+    code: str
+    name: str
+    boundary_geojson: dict
+
     model_config = ConfigDict(from_attributes=True)
 
 

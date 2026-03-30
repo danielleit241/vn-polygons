@@ -10,7 +10,13 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.administrative_unit import AdministrativeUnit
 from app.models.province import Province
-from app.schemas.province import ProvinceCreate, ProvincePolygonImportResult, ProvinceRead, ProvinceUpdate
+from app.schemas.province import (
+    ProvinceBoundaryRead,
+    ProvinceCreate,
+    ProvincePolygonImportResult,
+    ProvinceRead,
+    ProvinceUpdate,
+)
 
 router = APIRouter()
 
@@ -66,6 +72,22 @@ def get_province(province_code: str, db: Session = Depends(get_db)) -> Province:
     if province is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Province not found")
     return province
+
+
+@router.get("/{province_code}/boundary", response_model=ProvinceBoundaryRead)
+def get_province_boundary(province_code: str, db: Session = Depends(get_db)) -> ProvinceBoundaryRead:
+    province = db.get(Province, province_code)
+    if province is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Province not found")
+
+    if not isinstance(province.boundary_geojson, dict):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Province boundary not found")
+
+    return ProvinceBoundaryRead(
+        code=province.code,
+        name=province.name,
+        boundary_geojson=province.boundary_geojson,
+    )
 
 
 @router.post("", response_model=ProvinceRead, status_code=status.HTTP_201_CREATED)
