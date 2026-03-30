@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/vn_polygons"
     PROVINCE_POLYGONS_DIR: str = "sql/provinces"
+    API_KEY: str = "dev-api-key"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

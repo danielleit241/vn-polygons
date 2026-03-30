@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+from secrets import compare_digest
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from sqlalchemy import text
 
@@ -27,6 +29,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+
+@app.middleware("http")
+async def enforce_api_key_for_non_get(request: Request, call_next):
+    method = request.method.upper()
+    if method in {"GET", "HEAD", "OPTIONS"}:
+        return await call_next(request)
+
+    provided_key = request.headers.get("X-API-Key")
+    if not provided_key or not compare_digest(provided_key, settings.API_KEY):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid or missing API key"},
+        )
+
+    return await call_next(request)
 
 
 @app.get("/", tags=["root"], include_in_schema=False)

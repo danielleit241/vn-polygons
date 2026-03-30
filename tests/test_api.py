@@ -1,6 +1,11 @@
 ﻿from fastapi.testclient import TestClient
 from fastapi import status
 
+from app.core.config import settings
+
+
+AUTH_HEADERS = {"X-API-Key": settings.API_KEY}
+
 
 def test_health_check(client: TestClient) -> None:
     response = client.get("/api/v1/health")
@@ -22,7 +27,11 @@ def test_administrative_regions_crud(client: TestClient) -> None:
         "code_name": "dong_bang_song_hong",
         "code_name_en": "red_river_delta"
     }
-    response = client.post("/api/v1/administrative-regions", json=create_data)
+    response = client.post(
+        "/api/v1/administrative-regions",
+        json=create_data,
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["id"] == 1
@@ -35,12 +44,16 @@ def test_administrative_regions_crud(client: TestClient) -> None:
 
     # 4. Update
     update_data = {"name": "Updated Name"}
-    response = client.put("/api/v1/administrative-regions/1", json=update_data)
+    response = client.put(
+        "/api/v1/administrative-regions/1",
+        json=update_data,
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["name"] == "Updated Name"
 
     # 5. Delete
-    response = client.delete("/api/v1/administrative-regions/1")
+    response = client.delete("/api/v1/administrative-regions/1", headers=AUTH_HEADERS)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # 6. Verify deleted
@@ -59,7 +72,11 @@ def test_administrative_units_crud(client: TestClient) -> None:
         "code_name": "thanh_pho_truc_thuoc_trung_uong",
         "code_name_en": "municipality"
     }
-    response = client.post("/api/v1/administrative-units", json=create_data)
+    response = client.post(
+        "/api/v1/administrative-units",
+        json=create_data,
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["id"] == 1
 
@@ -70,12 +87,16 @@ def test_administrative_units_crud(client: TestClient) -> None:
 
     # 4. Update
     update_data = {"short_name": "TP"}
-    response = client.put("/api/v1/administrative-units/1", json=update_data)
+    response = client.put(
+        "/api/v1/administrative-units/1",
+        json=update_data,
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["short_name"] == "TP"
 
     # 5. Delete
-    response = client.delete("/api/v1/administrative-units/1")
+    response = client.delete("/api/v1/administrative-units/1", headers=AUTH_HEADERS)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
@@ -86,13 +107,13 @@ def test_provinces_crud(client: TestClient) -> None:
         "short_name": "Tinh", "short_name_en": "Province",
         "code_name": "tinh", "code_name_en": "province"
     }
-    client.post("/api/v1/administrative-units", json=unit_data)
+    client.post("/api/v1/administrative-units", json=unit_data, headers=AUTH_HEADERS)
 
     region_data = {
         "id": 2, "name": "Mien Bac", "name_en": "North",
         "code_name": "mien_bac", "code_name_en": "north"
     }
-    client.post("/api/v1/administrative-regions", json=region_data)
+    client.post("/api/v1/administrative-regions", json=region_data, headers=AUTH_HEADERS)
 
     # Create province
     province_data = {
@@ -105,7 +126,7 @@ def test_provinces_crud(client: TestClient) -> None:
         "administrative_unit_id": 2,
         "administrative_region_id": 2
     }
-    response = client.post("/api/v1/provinces", json=province_data)
+    response = client.post("/api/v1/provinces", json=province_data, headers=AUTH_HEADERS)
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["code"] == "01"
 
@@ -115,12 +136,16 @@ def test_provinces_crud(client: TestClient) -> None:
     assert response.json()["name"] == "Ha Noi"
 
     # Update
-    response = client.put("/api/v1/provinces/01", json={"name": "Hanoi 2"})
+    response = client.put(
+        "/api/v1/provinces/01",
+        json={"name": "Hanoi 2"},
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["name"] == "Hanoi 2"
 
     # Delete
-    response = client.delete("/api/v1/provinces/01")
+    response = client.delete("/api/v1/provinces/01", headers=AUTH_HEADERS)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
@@ -131,7 +156,7 @@ def test_wards_crud(client: TestClient) -> None:
         "short_name": "Phuong", "short_name_en": "Ward",
         "code_name": "phuong", "code_name_en": "ward"
     }
-    client.post("/api/v1/administrative-units", json=unit_data)
+    client.post("/api/v1/administrative-units", json=unit_data, headers=AUTH_HEADERS)
 
     # Note: Using random unique codes to ensure it doesn't clash with previous tests
     
@@ -148,7 +173,7 @@ def test_wards_crud(client: TestClient) -> None:
     }
     
     # Trying without province first to test endpoint
-    response = client.post("/api/v1/wards", json=ward_data)
+    response = client.post("/api/v1/wards", json=ward_data, headers=AUTH_HEADERS)
     # The foreign key is usually enforced in sqlite with PRAGMA foreign_keys=ON
     
     if response.status_code == status.HTTP_201_CREATED:
@@ -159,8 +184,22 @@ def test_wards_crud(client: TestClient) -> None:
         assert response.status_code == status.HTTP_200_OK
         
         # Delete
-        response = client.delete("/api/v1/wards/00001")
+        response = client.delete("/api/v1/wards/00001", headers=AUTH_HEADERS)
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_non_get_requires_api_key(client: TestClient) -> None:
+    create_data = {
+        "id": 99,
+        "name": "Test Region",
+        "name_en": "Test Region",
+        "code_name": "test_region",
+        "code_name_en": "test_region",
+    }
+
+    response = client.post("/api/v1/administrative-regions", json=create_data)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json() == {"detail": "Invalid or missing API key"}
 
 def test_root_redirect(client: TestClient) -> None:
     response = client.get("/", follow_redirects=False)
