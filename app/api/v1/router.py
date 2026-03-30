@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.v1.endpoints import (
 	administrative_regions,
@@ -7,8 +7,9 @@ from app.api.v1.endpoints import (
 	provinces,
 	wards,
 )
+from app.core.security import enforce_api_key_for_non_get
 
-api_router = APIRouter()
+api_router = APIRouter(dependencies=[Depends(enforce_api_key_for_non_get)])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(
 	administrative_regions.router,
